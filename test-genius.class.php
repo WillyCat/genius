@@ -6,28 +6,50 @@ $eol = "\n";
 
 $obj = new genius();
 
-$testcase = 'artist-songs';
+/*
+$testcases = [ 'search', 'artist', 'artist-songs', 'song' ];
+foreach ($testcases as $testcase)
+	do_test ($obj, $testcase);
+*/
 
-$artist_id = 22272;	// Lionel Ritchie
+do_test ($obj, 'search');
 
-switch ($testcase)
+function
+do_test (genius $obj, string $testcase)
 {
-case 'search' :
-	$result = $obj -> search ('hello');
-	echo 'Source: ' . $obj->getSource() . $eol;
-	display_search_result ($result);
-	break;
-case 'artist' :
-	$result = $obj -> getArtist ($artist_id);
-	echo 'Source: ' . $obj->getSource() . $eol;
-	display_artist ($result);
-	break;
-case 'artist-songs' :
-	$result = $obj -> getArtistSongs ($artist_id);
-	echo 'Source: ' . $obj->getSource() . $eol;
-	display_artist_songs ($artist_id, $result);
-}
+	global $eol;
 
+	echo '------------------' . $testcase . '------------------' . $eol;
+
+	$artist_id = 22272;	// Lionel Ritchie
+	$song_id = 378195;
+	$q = 'hello';
+$q = 'brel';
+
+	switch ($testcase)
+	{
+	case 'search' :
+		$result = $obj -> search ($q);
+		echo 'Source: ' . $obj->getSource() . $eol;
+		if ($obj->getSource() == 'cache')
+			echo 'Cache ID: ' . $obj->getCacheID() . $eol;
+		display_search_result ($result);
+		break;
+	case 'artist' :
+		$result = $obj -> getArtist ($artist_id);
+		echo 'Source: ' . $obj->getSource() . $eol;
+		display_artist ($result);
+		break;
+	case 'artist-songs' :
+		$result = $obj -> getArtistSongs ($artist_id);
+		echo 'Source: ' . $obj->getSource() . $eol;
+		display_artist_songs ($artist_id, $result);
+	case 'song' :
+		$result = $obj -> getSong ($song_id);
+		echo 'Source: ' . $obj->getSource() . $eol;
+		display_song ($song_id, $result);
+	}
+}
 function
 repeat (string $c, int $n): string
 {
@@ -50,6 +72,23 @@ title (string $t): string
 	*/
 	$str .= $t . ': ';
 	return $str;
+}
+
+function
+display_song (int $song_id, array $result): void
+{
+	$strings = [ ];
+
+	$song = $result['song'];
+
+	$keys = [ 'id', 'apple_music_id', 'lyrics_state', 'release_date', 'title', 'full_title', 'url', 'song_art_image_url' ];
+
+	foreach ($keys as $key)
+		$strings[] = title ($key) . $song[$key];
+
+	global $eol;
+	foreach ($strings as $str)
+		echo $str . $eol;
 }
 
 function
