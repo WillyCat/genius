@@ -14,6 +14,8 @@ Date        Version  Change
 2019-01-28      0.1  First draft
 2019-04-09      0.2  Code refactored with new classes, added cache management
                      added getArtist(), getArtistSongs()
+2019-04-10      0.3  added getSong()
+                     added phpdoc
 */
 
 class geniusCache
@@ -28,6 +30,12 @@ class geniusCache
 		$this -> url = $u;
 		$this -> filename = 'cache/' . $fn;
 		$this -> source = 'none';
+	}
+
+	public function
+	getCacheID(): string
+	{
+		return $this -> filename;
 	}
 
 	private function
@@ -54,6 +62,14 @@ class geniusCache
 		return $answer;
 	}
 
+	/**
+	 * Retrieve data (from either source (online or cache) )
+	 *
+         * @return array decoded data
+	 */
+
+// @todo: if online fails, will be called twice , needs improvement
+
 	public function
 	fetch(): array
 	{
@@ -68,6 +84,12 @@ class geniusCache
 		$response = $answer['response'];
 		return $response;
 	}
+
+	/**
+	 * Retrieve data online
+	 *
+	 * Sets geniusCache::body
+	 */
 
 	private function
 	fetchDataFromGenius()
@@ -93,6 +115,12 @@ class geniusCache
 		$this -> source = 'api';
 	}
 
+	/**
+	 * Retrieve data from the cache
+	 *
+	 * Sets geniusCache::body
+	 */
+
 	private function
 	fetchDataFromCache (): void
 	{
@@ -100,11 +128,23 @@ class geniusCache
 		$this -> source = 'cache';
 	}
 
+	/**
+	 * Determines if there is good data in the cache
+	 *
+         * @return bool ...
+	 */
+
 	private function
 	isCacheValid (): bool
 	{
 		return file_exists ($this -> filename);
 	}
+
+	/**
+	 * Source of data for last call
+	 *
+         * @return string source 'none'=>error, no successful call occured / 'api' => online call to genius.com / 'cache' => cache (data is from a previous call)
+	 */
 
 	public function
 	getSource(): string
@@ -130,20 +170,23 @@ class genius
 		$this -> u = null;
 	}
 
-	public function
-	search(string $q): array
-	{
-		$this -> buildGeniusUrl ([ 'search' ], [  'q' => $q ]);
-
-		$this -> cache = new geniusCache ($this -> u, $this -> fn);
-		$response = $this -> cache -> fetch();
-		return $response;
-	}
+	/**
+	 * Build genius URL
+	 *
+	 * Sets genius::url
+	 *
+         * @param array pathparts parts of the url
+	 * @param array queryparms array of $key=>$value as query parms
+         * @return void
+	 */
 
 	private function
 	buildGeniusUrl(array $pathparts, array $queryparms = null): void
 	{
-		$this -> fn = implode ('.' , $pathparts) . '.json';
+		$this -> fn = implode ('.' , $pathparts);
+		if ($queryparms != null)
+			$this -> fn .= '.' . implode ('.' , $queryparms);
+		$this -> fn .= '.json';
 
 		$this -> u = new tinyUrl ();
 		$url = implode ('/' , $pathparts);
@@ -156,18 +199,54 @@ class genius
 		$this -> u -> setQuery($query);
 	}
 
-	public function
-	getArtistSongs (int $id, int $pageno = 1, int $npp = 10): array
-	{
-		if ($pageno < 1)
-			throw new Exception ('Invalid page number');
+	//==========================================================
+	// GENIUS API ENTRY POINTS
+	//==========================================================
 
-		$this -> buildGeniusUrl ([ 'artists', $id, 'songs' ], [ 'per_page' => $npp, 'page' => $page ]);
+	/**
+	 * Search genius database
+	 *
+         * @param string q Query string
+         * @return array data
+	 */
+
+	public function
+	search(string $q): array
+	{
+		$this -> buildGeniusUrl ([ 'search' ], [  'q' => $q ]);
 
 		$this -> cache = new geniusCache ($this -> u, $this -> fn);
 		$response = $this -> cache -> fetch();
 		return $response;
 	}
+
+	/**
+	 * Retrieve a page of the list of songs for an artist
+	 *
+         * @param int id Song unique id
+	 * @param int pageno First page is zero (default: 0)
+	 * @param int npp Items per page (default: 10)
+         * @return array data
+	 */
+	public function
+	getArtistSongs (int $id, int $pageno = 0, int $npp = 10): array
+	{
+		if ($pageno < 0)
+			throw new Exception ('Invalid page number');
+
+		$this -> buildGeniusUrl ([ 'artists', $id, 'songs' ], [ 'per_page' => $npp, 'page' => $pageno+1 ]);
+
+		$this -> cache = new geniusCache ($this -> u, $this -> fn);
+		$response = $this -> cache -> fetch();
+		return $response;
+	}
+
+	/**
+	 * Get artist infos
+	 *
+         * @param int id Artist unique id
+         * @return array data
+	 */
 
 	public function
 	getArtist (int $id): array
@@ -179,10 +258,43 @@ class genius
 		return $response;
 	}
 
+	/**
+	 * Get song infos
+	 *
+         * @param int id Song unique id
+         * @return array data
+	 */
+
+	public function
+	getSong (int $id): array
+	{
+		$this -> buildGeniusUrl ([ 'songs', $id ]);
+
+		$this -> cache = new geniusCache ($this -> u, $this -> fn);
+		$response = $this -> cache -> fetch();
+		return $response;
+	}
+
+	//==========================================================
+	// MISC. TOOLS & INFOS
+	//==========================================================
+
+	/**
+	 * Source of data for last call
+	 *
+         * @return string source 'none'=>error, no successful call occured / 'api' => online call to genius.com / 'cache' => cache (data is from a previous call)
+	 */
+
 	public function
 	getSource (): string
 	{
 		return $this -> cache -> getSource();
+	}
+
+	public function
+	getCacheID(): string
+	{
+		return $this -> cache -> getCacheID();
 	}
 }
 
